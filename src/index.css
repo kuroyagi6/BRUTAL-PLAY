@@ -1,0 +1,181 @@
+/* Self-hosted fonts (offline). See scratchpad/fetch-fonts.mjs. */
+@import './assets/fonts/fonts.css';
+/* Extra fonts for the in-app font picker. See scratchpad/fetch-fonts-extra.mjs. */
+@import './assets/fonts/fonts-extra.css';
+@import "tailwindcss";
+
+
+@theme {
+  /* Blocky constructivist display (Cyrillic-capable) + Rubik body + stencil for graffiti tags. */
+  --font-display: "Rubik Mono One", sans-serif;
+  --font-sans: "Rubik", sans-serif;
+  --font-stencil: "Saira Stencil One", "Rubik Mono One", sans-serif;
+
+  --color-brutal-black: var(--brutal-black);
+  --color-brutal-white: var(--brutal-white);
+  --color-brutal-neon: var(--brutal-accent);
+  --color-brutal-spray: var(--brutal-spray);
+
+  --animate-spin-slow: spin 8s linear infinite;
+}
+
+/* ── RUSSIAN CONSTRUCTIVIST PALETTE ──────────────────────────────────────────
+   Ink black + concrete cream + Soviet red (primary accent), with a graffiti
+   spray-green as the secondary "tag" pop. --brutal-neon/accent drive every
+   existing highlight, so setting them red repaints the whole UI. */
+:root {
+  --brutal-black: #14100E;   /* ink / concrete shadow */
+  --brutal-white: #E8E2D0;   /* concrete cream */
+  --brutal-neon: #C1272D;    /* soviet red (primary accent) */
+  --brutal-accent: #C1272D;
+  /* Foreground for anything painted ON the accent (e.g. the active now-playing
+     widget). Recomputed from the live accent in App; default matches the red. */
+  --brutal-on-accent: #FFFFFF;
+  --brutal-spray: #7CFF3D;   /* graffiti spray (secondary) */
+  --brutal-shadow-color: rgba(232, 226, 208, 1);
+  --brutal-shadow-color-inv: rgba(20, 16, 14, 1);
+}
+
+.light {
+  --brutal-black: #E8E2D0;   /* cream paper background */
+  --brutal-white: #14100E;   /* ink foreground */
+  --brutal-neon: #C1272D;    /* red reads strong on cream (poster look) */
+  --brutal-accent: #C1272D;
+  --brutal-on-accent: #FFFFFF;
+  --brutal-spray: #2E9E2E;   /* darker spray for legibility on cream */
+  --brutal-shadow-color: rgba(20, 16, 14, 1);
+  --brutal-shadow-color-inv: rgba(232, 226, 208, 1);
+}
+
+@layer base {
+  html {
+    zoom: 0.9;
+  }
+  body {
+    @apply bg-brutal-black text-brutal-white font-sans transition-colors duration-300;
+  }
+}
+
+.brutal-border {
+  @apply border-4 border-brutal-white shadow-[8px_8px_0px_0px_var(--brutal-shadow-color)];
+}
+
+.brutal-btn {
+  @apply border-4 border-brutal-white shadow-[8px_8px_0px_0px_var(--brutal-shadow-color)] bg-brutal-white text-brutal-black px-6 py-2 font-display uppercase tracking-wider transition-all hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[10px_10px_0px_0px_var(--brutal-shadow-color)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-[4px_4px_0px_0px_var(--brutal-shadow-color)];
+}
+
+.brutal-card {
+  @apply border-4 border-brutal-white shadow-[8px_8px_0px_0px_var(--brutal-shadow-color)] bg-brutal-black p-6 transition-all duration-300;
+}
+
+/* Custom scrollbar for brutalist look */
+::-webkit-scrollbar {
+  width: 12px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-brutal-black;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-brutal-white border-2 border-brutal-black;
+}
+
+/* BRUTAL_SLIDER_STYLING */
+.brutal-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 24px;
+  height: 48px;
+  background: var(--brutal-accent);
+  border: 4px solid var(--brutal-black);
+  cursor: pointer;
+  transition: all 0.1s ease;
+  margin-top: calc(var(--track-h, 24px) / 2 - 24px); /* Center 48px thumb on dynamic track */
+}
+
+.brutal-slider::-moz-range-thumb {
+  width: 24px;
+  height: 48px;
+  background: var(--brutal-accent);
+  border: 4px solid var(--brutal-black);
+  cursor: pointer;
+  transition: all 0.1s ease;
+}
+
+.brutal-slider:hover::-webkit-slider-thumb {
+  background: var(--brutal-white);
+  transform: scaleX(1.1);
+}
+
+.brutal-slider:hover::-moz-range-thumb {
+  background: var(--brutal-white);
+  transform: scaleX(1.1);
+}
+
+.brutal-slider::-webkit-slider-runnable-track {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 100%;
+  border: none;
+}
+
+.brutal-slider::-moz-range-track {
+  height: 100%;
+  border: none;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  @apply bg-brutal-black border-l-2 border-brutal-white/10;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  @apply bg-brutal-white border-2 border-brutal-black;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  @apply bg-brutal-neon;
+}
+
+/* Cover-art grid tiles.
+
+   History: the ragged-masonry bug in the GRID browse views (artists/albums
+   overlapping into columns while genres looked fine) was first blamed on
+   `content-visibility: auto` that used to live here; removing it did NOT fix
+   the bug. The real cause, found by isolating the built CSS in a repro page:
+   the grid container carries `h-full overflow-y-auto`, and when its content
+   exceeds that definite height, Chromium sizes the auto rows to each tile's
+   inner CONTENT height (label bar / icon fallback, ~85px) instead of the
+   `aspect-square`-derived height — tiles still render square, but overflow
+   their squished rows and overlap. Small grids (genres, 11 items ≈ 2 rows)
+   barely overflow, so they looked fine; 100+ item grids collapsed.
+
+   The fix is `auto-rows-max` (grid-auto-rows: max-content) on the four GRID
+   containers in LibraryView.tsx, which forces rows back to the tiles' real
+   height.
+
+   `content-visibility: auto` below was once removed on the theory IT caused the
+   masonry — that was a misdiagnosis of the row bug above. Verified in an
+   isolated repro against the built CSS: with `auto-rows-max` present, rows hold
+   their square size through scroll-away/scroll-back with content-visibility on.
+   It stays because it is the cheap virtualization that keeps big grids
+   scrollable: off-screen tiles skip layout/paint, and `loading="lazy"` images
+   inside them don't fetch/decode until near the viewport. If masonry ever
+   reappears, check `auto-rows-max` is still on the grid containers FIRST. */
+.grid-tile {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 168px;
+}
+
+/* List-mode virtualization: put `cv-list` on a scrolling list container and
+   every direct child row skips layout/paint while off-screen. 88px matches the
+   DEFAULT row height; `auto` swaps in each row's real size once rendered, so
+   COMPACT/TECHNICAL rows settle after first paint. */
+.cv-list > * {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 88px;
+}

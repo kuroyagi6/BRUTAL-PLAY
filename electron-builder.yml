@@ -1,0 +1,50 @@
+# electron-builder configuration.
+# Build the installer:   npm run dist
+# Build + push a release: npm run publish   (needs GH_TOKEN env var set)
+
+appId: com.brutal.player
+productName: BRUTAL
+
+# Entry point comes from package.json "main" (electron/main.cjs).
+directories:
+  output: release        # installers land here (add to .gitignore)
+  buildResources: build  # put icon.ico here (optional; default icon used if absent)
+
+# What goes INTO the app. Production node_modules are bundled automatically and
+# devDependencies (vite, typescript, electron, electron-builder…) are pruned.
+files:
+  - dist/**/*
+  - electron/**/*
+  - package.json
+
+# This app has no native (.node) addons — everything is pure JS — so there is no
+# module to rebuild against Electron's ABI and nothing needs unpacking from the
+# asar. Skipping the rebuild means packaging needs no C++ toolchain.
+npmRebuild: false
+
+win:
+  target:
+    - nsis            # a normal Windows installer .exe with auto-update support
+  # icon: build/icon.ico   # uncomment once you drop a 256x256 icon.ico in build/
+  # Skip signing + rcedit resource-editing. That step needs the winCodeSign
+  # helper, whose extraction requires symlink privilege (Developer Mode / admin)
+  # on Windows. Turning it off lets an ordinary shell build the app; the only
+  # cost is the exe keeps Electron's default icon + no embedded metadata. To get
+  # a custom exe icon back later, enable Windows Developer Mode and set this true.
+  signAndEditExecutable: false
+
+nsis:
+  oneClick: false            # show a real installer with a folder choice
+  perMachine: false          # install per-user (no admin prompt)
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+
+# ─── Auto-update source ───────────────────────────────────────────────────────
+# GitHub Releases. Replace OWNER with your GitHub username/org and REPO with the
+# repository name. Every `npm run publish` uploads the installer + a latest.yml
+# manifest to a Release; installed apps read latest.yml to update themselves.
+publish:
+  provider: github
+  owner: kuroyagi6
+  repo: BRUTAL-PLAY

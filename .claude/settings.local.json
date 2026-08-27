@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(npx tsc --noEmit 2>$null)",
+      "PowerShell(if \\($LASTEXITCODE -ne 0\\) { \"TSC FAILED\" })",
+      "PowerShell(npm run dev)"
+    ]
+  }
+}
