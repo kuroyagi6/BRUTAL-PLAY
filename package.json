@@ -1,7 +1,7 @@
 {
   "name": "react-example",
   "private": true,
-  "version": "0.1.1",
+  "version": "0.1.2",
   "type": "module",
   "description": "BRUTAL — a local-first music player.",
   "author": "kuroyagi6",
@@ -23,8 +23,6 @@
   },
   "dependencies": {
     "@google/genai": "^1.29.0",
-    "@tailwindcss/vite": "^4.1.14",
-    "@vitejs/plugin-react": "^5.0.4",
     "buffer": "^6.0.3",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
@@ -36,12 +34,13 @@
     "music-metadata-browser": "^2.5.11",
     "qrcode": "^1.5.4",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "vite": "^6.2.0"
+    "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.1.14",
     "@types/express": "^4.17.21",
     "@types/node": "^22.14.0",
+    "@vitejs/plugin-react": "^5.0.4",
     "autoprefixer": "^10.4.21",
     "concurrently": "^9.2.1",
     "cross-env": "^10.1.0",
