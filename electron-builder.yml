@@ -25,13 +25,13 @@ npmRebuild: false
 win:
   target:
     - nsis            # a normal Windows installer .exe with auto-update support
-  # icon: build/icon.ico   # uncomment once you drop a 256x256 icon.ico in build/
-  # Skip signing + rcedit resource-editing. That step needs the winCodeSign
-  # helper, whose extraction requires symlink privilege (Developer Mode / admin)
-  # on Windows. Turning it off lets an ordinary shell build the app; the only
-  # cost is the exe keeps Electron's default icon + no embedded metadata. To get
-  # a custom exe icon back later, enable Windows Developer Mode and set this true.
-  signAndEditExecutable: false
+  icon: build/icon.ico
+  # rcedit stamps the icon + metadata onto the exe. It lives in the winCodeSign
+  # helper, whose extraction needs symlink privilege — satisfied here by Windows
+  # Developer Mode being ON. Signing itself is still skipped (no cert configured),
+  # so the exe gets the icon but stays unsigned. If a build ever fails on the
+  # winCodeSign symlink step (Developer Mode off), set this back to false.
+  signAndEditExecutable: true
 
 nsis:
   oneClick: false            # show a real installer with a folder choice
