@@ -174,6 +174,15 @@ export function useMediaLibrary(): MediaLibrary {
   // paths compare case-insensitively, same as folderTree's `key`).
   const [unlinkedFolders, setUnlinkedFolders] = usePersistentState<string[]>('brutal-unlinked-folders', []);
 
+  // Authoritative set of native paths already in the library (lowercased, since
+  // Windows paths compare case-insensitively). Updated SYNCHRONOUSLY on every
+  // add/remove/load, so import de-dupe never depends on the React `playlist`
+  // state, which lags behind a burst of imports or the first-render window
+  // before the DB load commits. Relying on that lagging state is what let the
+  // same files be re-imported with fresh ids and persisted as permanent
+  // duplicates. This ref closes that window.
+  const knownPathsRef = React.useRef<Set<string>>(new Set());
+
   const toggleFolderLink = React.useCallback(
     (path: string) => {
       const k = path.toLowerCase();
@@ -194,10 +203,45 @@ export function useMediaLibrary(): MediaLibrary {
   React.useEffect(() => {
     (async () => {
       try {
-        const [storedTracks, covers] = await Promise.all([
+        const [allStored, covers] = await Promise.all([
           dbService.getAllTracks(),
           dbService.getAllCovers(),
         ]);
+
+        // Self-heal: collapse rows that point at the SAME file on disk. A row
+        // with a nativePath is a local track; keep the first per path and drop
+        // the rest (and delete them from the DB so the library stays clean
+        // across restarts). Rows without a nativePath are browser uploads — they
+        // have no stable identity, so every one is kept. This repairs libraries
+        // that were doubled by the old state-lagging de-dupe.
+        const seenPaths = new Set<string>();
+        const storedTracks: typeof allStored = [];
+        const dupIds: string[] = [];
+        for (const st of allStored) {
+          const key = st.nativePath?.toLowerCase();
+          if (key) {
+            if (seenPaths.has(key)) {
+              dupIds.push(st.id);
+              continue;
+            }
+            seenPaths.add(key);
+          }
+          storedTracks.push(st);
+        }
+        // Seed the authoritative path set from what actually survived.
+        knownPathsRef.current = seenPaths;
+        if (dupIds.length > 0) {
+          // Best-effort cleanup — a failure here just leaves the extra rows,
+          // which the in-memory list already excludes this session.
+          Promise.all(
+            dupIds.map((id) =>
+              dbService.deleteTrack(id).catch((e) =>
+                console.warn('Could not delete duplicate track row:', e)
+              )
+            )
+          ).then(() => console.info(`Removed ${dupIds.length} duplicate track row(s) on load.`));
+        }
+
         if (storedTracks.length > 0) {
           const tracksWithUrls: Track[] = storedTracks.map((st) => ({
             id: st.id,
@@ -281,20 +325,22 @@ export function useMediaLibrary(): MediaLibrary {
   ): Promise<{ added: number; skipped: number; persistFailed: number }> => {
     // ── Stage 1: de-dupe before doing any I/O ──
     // Skip files already in the library (and repeats within this batch).
-    // Windows paths are case-insensitive.
-    const existingPaths = new Set(
-      playlist.map((t) => t.nativePath?.toLowerCase()).filter(Boolean) as string[]
-    );
+    // Windows paths are case-insensitive. Checked against knownPathsRef — the
+    // set updated synchronously on every add/remove/load — NOT the `playlist`
+    // state, which lags concurrent imports and the first-render load window.
+    // Claiming each path here (before the async scan) means two overlapping
+    // imports can't both treat the same file as new.
+    const known = knownPathsRef.current;
     const fresh: string[] = [];
     let skipped = 0;
 
     for (const p of paths) {
       const pathKey = p.toLowerCase();
-      if (existingPaths.has(pathKey)) {
+      if (known.has(pathKey)) {
         skipped++;
         continue;
       }
-      existingPaths.add(pathKey);
+      known.add(pathKey);
       fresh.push(p);
     }
     if (fresh.length === 0) return { added: 0, skipped, persistFailed: 0 };
@@ -362,6 +408,7 @@ export function useMediaLibrary(): MediaLibrary {
       console.error('Failed to delete track from IndexedDB:', error);
     }
 
+    if (trackToRemove.nativePath) knownPathsRef.current.delete(trackToRemove.nativePath.toLowerCase());
     setPlaylist((prev) => prev.filter((t) => t.id !== id));
     await refreshDiskUsage();
   };
@@ -407,6 +454,12 @@ export function useMediaLibrary(): MediaLibrary {
     }
 
     const removeIds = new Set(toRemove.map((t) => t.id));
+    // Rebuild the authoritative path set from the survivors, so a path whose
+    // only copy was just removed becomes importable again while paths that still
+    // have a kept copy stay claimed.
+    knownPathsRef.current = new Set(
+      [...kept.values()].map((t) => t.nativePath?.toLowerCase()).filter(Boolean) as string[]
+    );
     setPlaylist((prev) => prev.filter((t) => !removeIds.has(t.id)));
     await refreshDiskUsage();
     return toRemove.length;
